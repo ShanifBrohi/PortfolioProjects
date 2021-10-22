@@ -1,0 +1,159 @@
+Select *
+From Coviddeaths
+Where continent is not null 
+order by 3,4;
+
+-- Select Data that we are going to be starting with
+
+Select Location, date_time, total_cases, new_cases, total_deaths, population
+From coviddeaths
+Where continent is not null 
+order by 1,2;
+
+
+-- Total Cases vs Total Deaths
+-- Shows likelihood of dying if you contract covid in your country
+
+SELECT location, continent, date_time, total_cases, total_deaths, (total_deaths/total_cases)*100 AS DeathPercentage
+FROM coviddeaths
+WHERE location LIKE '%States' AND continent IS NOT null 
+ORDER BY 1, 2;
+
+
+-- Total Cases vs Population
+-- Shows what percentage of population infected with Covid
+
+SELECT location, date_time, Population, total_cases,  (total_cases/population)*100 as PercentPopulationInfected
+FROM coviddeaths
+--Where location like '%states%'
+order by 1,2;
+
+-- Countries with Highest Infection Rate compared to Population
+
+SELECT Location, Population, MAX(total_cases) AS Highest_Infection_Count,  MAX((total_cases/population))*100 AS Percent_Population_Infected
+FROM coviddeaths
+--Where location like '%states%'
+GROUP BY Location, Population
+ORDER BY Percent_Population_Infected DESC;
+
+
+-- Countries with Highest Death Count per Population
+
+SELECT Location, MAX(cast(Total_deaths as int)) AS Total_Death_Count
+FROM coviddeaths
+--Where location like '%states%'
+WHERE continent IS NOT NULL 
+GROUP BY Location
+ORDER BY Total_Death_Count DESC;
+
+
+-- BREAKING THINGS DOWN BY CONTINENT
+
+-- Showing contintents with the highest death count per population
+
+SELECT continent, MAX(cast(Total_deaths as int)) AS Total_Death_Count
+From coviddeaths
+--Where location like '%states%'
+WHERE continent IS NOT NULL 
+GROUP BY continent
+ORDER BY Total_Death_Count DESC;
+
+
+-- GLOBAL NUMBERS
+
+SELECT SUM(new_cases) AS total_cases, SUM(cast(new_deaths as int)) AS total_deaths, SUM(cast(new_deaths as NUMERIC(19, 2)))/SUM(New_Cases)*100 as Death_Percentage
+FROM coviddeaths
+--Where location like '%states%'
+WHERE continent IS NOT NULL
+--Group By date_time
+ORDER BY 1,2;
+
+
+
+-- Total Population vs Vaccinations
+-- Shows Percentage of Population that has recieved at least one Covid Vaccine
+
+SELECT cd.continent, cd.location, cd.date_time, cd.population, cv.new_vaccinations
+, SUM(cv.new_vaccinations) OVER (PARTITION BY cd.Location ORDER BY cd.location, cd.date_time) AS continous_vaccinations
+--, (continous_vaccinations/population)*100
+FROM coviddeaths cd
+JOIN covidvaccinations cv
+	ON cd.location = cv.location AND cd.date_time = cv.date_time
+WHERE cd.continent IS NOT NULL 
+ORDER BY 2,3;
+
+-- Using CTE to perform Calculation on Partition By in previous query
+
+WITH PopvsVac (continent, location, date_time, population, new_vaccinations, continous_vaccinations)
+AS
+
+(
+SELECT cd.continent, 
+		cd.location,
+		cd.date_time,
+		cd.population,
+		cv.new_vaccinations,
+		SUM(cv.new_vaccinations) OVER (PARTITION BY cd.location
+		ORDER BY cd.location, cd.date_time) AS continous_vaccinations
+FROM coviddeaths cd
+JOIN covidvaccinations cv
+	ON cd.location = cv.location
+	AND cd.date_time = cv.date_time
+)
+-- Use CTE
+
+SELECT *, (continous_vaccinations/population)*100
+FROM popvsVac;
+
+
+-- Using Temp Table to perform Calculation on Partition By in previous query
+
+DROP TABLE IF EXISTS percent_population_vaccinated;
+
+CREATE TABLE percent_population_vaccinated(
+	
+continent VARCHAR(255),
+location VARCHAR(255),
+date date,
+population NUMERIC,
+new_vaccinations NUMERIC,
+continous_vaccinations NUMERIC
+);
+		
+INSERT INTO percent_population_vaccinated
+SELECT cd.continent, 
+		cd.location,
+		cd.date_time,
+		cd.population,
+		cv.new_vaccinations,
+		SUM(cv.new_vaccinations) OVER (PARTITION BY cd.location
+		ORDER BY cd.location, cd.date_time) AS continous_vaccinations
+FROM coviddeaths cd
+JOIN covidvaccinations cv
+	ON cd.location = cv.location
+	AND cd.date_time = cv.date_time;
+	
+	
+SELECT *, (continous_vaccinations/population)*100
+FROM percent_population_vaccinated;
+
+
+--creating view to store dara for later visualizations
+
+CREATE VIEW percent_population_vaccinated_view AS
+SELECT cd.continent, 
+		cd.location,
+		cd.date_time,
+		cd.population,
+		cv.new_vaccinations,
+		SUM(cv.new_vaccinations) OVER (PARTITION BY cd.location
+		ORDER BY cd.location, cd.date_time) AS continous_vaccinations
+FROM coviddeaths cd
+JOIN covidvaccinations cv
+	ON cd.location = cv.location
+	AND cd.date_time = cv.date_time
+WHERE cd.continent IS NOT NULL;
+
+SELECT *
+FROM percent_population_vaccinated_view;
+
