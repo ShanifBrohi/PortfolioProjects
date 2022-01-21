@@ -1,3 +1,8 @@
+/*
+Covid 19 Data Exploration 
+Skills used: Joins, CTE's, Temp Tables, Windows Functions, Aggregate Functions, Creating Views, Converting Data Types
+*/
+
 Select *
 From Coviddeaths
 Where continent is not null 
@@ -138,7 +143,7 @@ SELECT *, (continous_vaccinations/population)*100
 FROM percent_population_vaccinated;
 
 
---creating view to store dara for later visualizations
+--creating view to store data for later visualizations
 
 CREATE VIEW percent_population_vaccinated_view AS
 SELECT cd.continent, 
