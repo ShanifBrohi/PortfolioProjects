@@ -17,7 +17,7 @@ ON hotelCTE.meal = meal_cost.meal
 
 
 
--- First query to get revenue
+-- First query to get revenue. Take out union queries from within the CTE and replace with this as needed. The aggregate function for revenue was also done in PowerBI.
 SELECT ROUND(SUM((stays_in_week_nights + stays_in_weekend_nights)* adr),0) AS 'Revenue',
 		arrival_date_year as 'Year',
 		hotel as 'Hotel_type'
